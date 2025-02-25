@@ -25,34 +25,50 @@ export const trimStringFromSymbols = (str, characters) => {
  * @returns {string} The modified string with placeholders replaced by values from the object.
  */
 const brackRegex = {
-  2: /\{\{\s*((?:\.\.\/)+)?([^}\s]+)\s*\}\}/g,
-  3: /\{\{\{\s*((?:\.\.\/)+)?([^}\s]+)\s*\}\}\}/g
+  2: /{{\s*((?:\.\.\/)*)([\w\d.]+)\s*}}/g,
+  3: /{{{(\s*(?:\.\.\/)*)([\w\d.]+)\s*}}}/g
 }
 
-export function replaceLiteralsWithObjectFields (str, options = {}, forcedState) {
-  if (!str.includes(options.bracketsLength === 3 ? '{{{' : '{{')) return str
-  const reg = brackRegex[options.bracketsLength || 2]
-  const obj = forcedState || this?.state || {}
+const getNestedValue = (obj, path) => {
+  return path.split('.').reduce((acc, part) => {
+    return acc && acc[part] !== undefined ? acc[part] : undefined
+  }, obj)
+}
+
+export function replaceLiteralsWithObjectFields (str, state = {}, options = {}) {
+  const { bracketsLength = 2 } = options
+  const bracketPattern = bracketsLength === 3 ? '{{{' : '{{'
+  if (!str.includes(bracketPattern)) return str
+
+  const reg = brackRegex[bracketsLength]
+  const obj = state || {}
+
   return str.replace(reg, (_, parentPath, variable) => {
     if (parentPath) {
-      const parentLevels = parentPath.match(options.bracketsLength === 3 ? /\.\.\.\//g : /\.\.\//g).length
+      const parentLevels = (parentPath.match(/\.\.\//g) || []).length
       let parentState = obj
+
       for (let i = 0; i < parentLevels; i++) {
+        if (!parentState || !parentState.parent) return ''
         parentState = parentState.parent
-        if (!parentState) {
-          return '' // Return an empty string if the parent level doesn't exist
-        }
       }
-      const value = parentState[variable.trim()]
-      return value !== undefined ? `${value}` : ''
+
+      // If the variable is 'parent', return the value property
+      const key = variable.trim()
+      if (key === 'parent') {
+        return parentState.value !== undefined ? String(parentState.value) : ''
+      }
+
+      const value = getNestedValue(parentState, key)
+      return value !== undefined ? String(value) : ''
     } else {
-      const value = obj[variable.trim()]
-      return value !== undefined ? `${value}` : ''
+      const value = getNestedValue(obj, variable.trim())
+      return value !== undefined ? String(value) : ''
     }
   })
 }
 
-export const lowercaseFirstLetter = (inputString) => {
+export const lowercaseFirstLetter = inputString => {
   return `${inputString.charAt(0).toLowerCase()}${inputString.slice(1)}`
 }
 
@@ -98,7 +114,10 @@ export const findKeyPosition = (str, key) => {
       // If braceCount is 0 and we find the end of the object/array
       if (braceCount === 0) {
         endLineNumber = i + 1
-        endColumn = lines[i].lastIndexOf('}') !== -1 ? lines[i].lastIndexOf('}') + 2 : lines[i].length + 1
+        endColumn =
+          lines[i].lastIndexOf('}') !== -1
+            ? lines[i].lastIndexOf('}') + 2
+            : lines[i].length + 1
         break
       }
     }
@@ -112,7 +131,7 @@ export const findKeyPosition = (str, key) => {
   }
 }
 
-export const replaceOctalEscapeSequences = (str) => {
+export const replaceOctalEscapeSequences = str => {
   // Regex to match octal escape sequences
   const octalRegex = /\\([0-7]{1,3})/g
 
@@ -126,23 +145,40 @@ export const replaceOctalEscapeSequences = (str) => {
   })
 }
 
-export const encodeNewlines = (str) => {
-  return str.split('\n').join('/////n').split('`').join('/////tilde').split('$').join('/////dlrsgn')
+export const encodeNewlines = str => {
+  return str
+    .split('\n')
+    .join('/////n')
+    .split('`')
+    .join('/////tilde')
+    .split('$')
+    .join('/////dlrsgn')
 }
 
-export const decodeNewlines = (encodedStr) => {
-  return encodedStr.split('/////n').join('\n').split('/////tilde').join('`').split('/////dlrsgn').join('$')
+export const decodeNewlines = encodedStr => {
+  return encodedStr
+    .split('/////n')
+    .join('\n')
+    .split('/////tilde')
+    .join('`')
+    .split('/////dlrsgn')
+    .join('$')
 }
 
-export const customEncodeURIComponent = (str) => {
-  return str.split('').map(char => {
-    if (/[^a-zA-Z0-9\s]/.test(char)) {
-      return '%' + char.charCodeAt(0).toString(16).toUpperCase()
-    }
-    return char
-  }).join('')
+export const customEncodeURIComponent = str => {
+  return str
+    .split('')
+    .map(char => {
+      if (/[^a-zA-Z0-9\s]/.test(char)) {
+        return '%' + char.charCodeAt(0).toString(16).toUpperCase()
+      }
+      return char
+    })
+    .join('')
 }
 
-export const customDecodeURIComponent = (encodedStr) => {
-  return encodedStr.replace(/%[0-9A-Fa-f]{2}/g, match => String.fromCharCode(parseInt(match.slice(1), 16)))
+export const customDecodeURIComponent = encodedStr => {
+  return encodedStr.replace(/%[0-9A-Fa-f]{2}/g, match =>
+    String.fromCharCode(parseInt(match.slice(1), 16))
+  )
 }

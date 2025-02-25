@@ -11,7 +11,7 @@ const two = {
 }
 
 const root = {
-  extend: [one, two]
+  extends: [one, two]
 }
 
 console.log(root)

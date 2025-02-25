@@ -1,0 +1,20 @@
+{
+  "standard.autoFixOnSave": true,
+  "editor.formatOnSave": true,
+  "eslint.validate": ["javascript"],
+  "standard.enable": true,
+  "search.exclude": {
+    "**/.legacy": true,
+    "**/* copy.js": true,
+    "**/*.worker.js": true,
+    "**/generated-packages/**": true,
+    "yarn.lock": true
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "numso.prettier-standard-vscode"
+  },
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "always"
+  },
+
+}

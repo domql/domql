@@ -1,9 +1,8 @@
 'use strict'
 
-import { exec, isFunction, isObject, isUndefined, isVariant } from '@domql/utils'
+import { exec, isFunction, isMethod, isObject, isUndefined } from '@domql/utils'
 import { applyEventsOnNode, triggerEventOn } from '@domql/event'
 import { cacheNode } from '@domql/render'
-import { isMethod } from './methods/index.js'
 import { create } from './create.js'
 
 import {
@@ -13,7 +12,6 @@ import {
 } from './iterate.js'
 import { REGISTRY } from './mixins/index.js'
 import { applyParam } from './utils/applyParam.js'
-import { propagateEventsFromProps } from './utils/propEvents.js'
 // import { defineSetter } from './methods'
 
 const ENV = process.env.NODE_ENV
@@ -34,7 +32,7 @@ export const createNode = async (element, options) => {
     } else node = element.node = cacheNode(element)
 
     // trigger `on.attachNode`
-    triggerEventOn('attachNode', element, options)
+    await triggerEventOn('attachNode', element, options)
   }
   // node.dataset // .key = element.key
 
@@ -44,19 +42,19 @@ export const createNode = async (element, options) => {
   }
 
   // iterate through exec props
-  throughExecProps(element)
+  await throughExecProps(element)
 
   // iterate through define
-  throughInitialDefine(element)
+  await throughInitialDefine(element)
 
   // iterate through exec
-  throughInitialExec(element)
+  await throughInitialExec(element)
 
   if (element.tag !== 'string' && element.tag !== 'fragment') {
-    propagateEventsFromProps(element)
+    // propagateEventsFromProps(element)
 
     if (isNewNode && isObject(element.on)) {
-      applyEventsOnNode(element, options)
+      await applyEventsOnNode(element, options)
     }
   }
 
@@ -68,9 +66,10 @@ export const createNode = async (element, options) => {
     if (
       isUndefined(value) ||
       isMethod(param, element) ||
-      isVariant(param) ||
       isObject(REGISTRY[param])
-    ) continue
+    ) {
+      continue
+    }
 
     const isElement = applyParam(param, element, options)
     if (isElement) {

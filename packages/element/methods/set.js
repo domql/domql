@@ -1,11 +1,11 @@
 'use strict'
 
-import { merge, overwrite } from '@domql/utils'
+import { merge, overwrite, removeContent } from '@domql/utils'
 
 import { set, reset } from '../set.js'
 import { update } from '../update.js'
 
-import { removeContent, updateContent } from '../mixins/content.js'
+import { updateContent } from '../mixins/content.js'
 import {
   call,
   error,
@@ -27,7 +27,7 @@ import {
   variables,
   verbose,
   warn
-} from './index.js'
+} from '@domql/utils/methods'
 
 export const addMethods = (element, parent, options = {}) => {
   const proto = {
@@ -57,6 +57,8 @@ export const addMethods = (element, parent, options = {}) => {
     error,
     call
   }
-  if (element.context.methods) (options.strict ? merge : overwrite)(proto, element.context.methods)
+  if (element.context.methods) {
+    ;(options.strict ? merge : overwrite)(proto, element.context.methods)
+  }
   Object.setPrototypeOf(element, proto)
 }

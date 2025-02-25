@@ -1,7 +1,6 @@
 'use strict'
 
 import { isDefined, isFunction, isObjectLike } from '@domql/utils'
-import { parseFilters, REGISTRY } from '../mixins/index.js'
 
 export const defineSetter = (element, key, get, set) =>
   Object.defineProperty(element, key, { get, set })
@@ -10,7 +9,7 @@ export const keys = function () {
   const element = this
   const keys = []
   for (const param in element) {
-    if (REGISTRY[param] && !parseFilters.elementKeys.includes(param)) { continue }
+    // if (REGISTRY[param] && !parseFilters.elementKeys.includes(param)) { continue }
     keys.push(param)
   }
   return keys
@@ -39,7 +38,9 @@ export const parseDeep = function (excl = []) {
   const obj = parse.call(element, excl)
   for (const v in obj) {
     if (excl.includes(v)) return
-    if (isObjectLike(obj[v])) { obj[v] = parseDeep.call(obj[v], excl) }
+    if (isObjectLike(obj[v])) {
+      obj[v] = parseDeep.call(obj[v], excl)
+    }
   }
   return obj
 }
@@ -51,7 +52,7 @@ export const log = function (...args) {
   if (args.length) {
     args.forEach(v => console.log(`%c${v}:\n`, 'font-weight: bold', element[v]))
   } else {
-    console.log(__ref.path)
+    console.log(__ref?.path)
     const keys = element.keys()
     keys.forEach(v => console.log(`%c${v}:\n`, 'font-weight: bold', element[v]))
   }

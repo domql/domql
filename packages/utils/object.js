@@ -9,12 +9,12 @@ import {
   isString,
   is,
   isUndefined,
-  isDate,
   isNull
 } from './types.js'
-import { mergeAndCloneIfArray, mergeArray } from './array.js'
+import { unstackArrayOfObjects } from './array.js'
 import { stringIncludesAny } from './string.js'
 import { isDOMNode } from './node.js'
+import { METHODS_EXL } from './keys.js'
 
 const ENV = process.env.NODE_ENV
 
@@ -39,7 +39,9 @@ export const map = (obj, extention, element) => {
 export const merge = (element, obj, excludeFrom = []) => {
   for (const e in obj) {
     const hasOwnProperty = Object.prototype.hasOwnProperty.call(obj, e)
-    if (!hasOwnProperty || excludeFrom.includes(e) || e.startsWith('__')) continue
+    if (!hasOwnProperty || excludeFrom.includes(e) || e.startsWith('__')) {
+      continue
+    }
     const elementProp = element[e]
     const objProp = obj[e]
     if (elementProp === undefined) {
@@ -49,10 +51,12 @@ export const merge = (element, obj, excludeFrom = []) => {
   return element
 }
 
-export const deepMerge = (element, extend, excludeFrom = []) => {
+export const deepMerge = (element, extend, excludeFrom = METHODS_EXL) => {
   for (const e in extend) {
     const hasOwnProperty = Object.prototype.hasOwnProperty.call(extend, e)
-    if (!hasOwnProperty || excludeFrom.includes(e) || e.startsWith('__')) continue
+    if (!hasOwnProperty || excludeFrom.includes(e) || e.startsWith('__')) {
+      continue
+    }
     const elementProp = element[e]
     const extendProp = extend[e]
     if (isObjectLike(elementProp) && isObjectLike(extendProp)) {
@@ -68,16 +72,18 @@ export const clone = (obj, excludeFrom = []) => {
   const o = {}
   for (const prop in obj) {
     const hasOwnProperty = Object.prototype.hasOwnProperty.call(obj, prop)
-    if (!hasOwnProperty || excludeFrom.includes(prop) || prop.startsWith('__')) continue
+    if (
+      !hasOwnProperty ||
+      excludeFrom.includes(prop) ||
+      prop.startsWith('__')
+    ) {
+      continue
+    }
     o[prop] = obj[prop]
   }
   return o
 }
 
-// Merge array, but exclude keys listed in 'excl'z
-export const mergeArrayExclude = (arr, exclude = []) => {
-  return arr.reduce((acc, curr) => deepMerge(acc, deepClone(curr, { exclude })), {})
-}
 /**
  * Enhanced deep clone function that combines features from multiple implementations
  * @param {any} obj - Object to clone
@@ -87,7 +93,7 @@ export const mergeArrayExclude = (arr, exclude = []) => {
  * @param {boolean} options.cleanNull - Remove null values
  * @param {Window} options.window - Window object for cross-frame cloning
  * @param {WeakMap} options.visited - WeakMap for tracking circular references
- * @param {boolean} options.handleExtend - Whether to handle 'extend' arrays specially
+ * @param {boolean} options.handleExtend - Whether to handle 'extends' arrays specially
  * @returns {any} Cloned object
  */
 export const deepClone = (obj, options = {}) => {
@@ -127,12 +133,19 @@ export const deepClone = (obj, options = {}) => {
     if (!Object.prototype.hasOwnProperty.call(obj, key)) continue
 
     // Skip excluded properties
-    if (exclude.includes(key) || key.startsWith('__') || key === '__proto__') continue
+    if (exclude.includes(key) || key.startsWith('__') || key === '__proto__') {
+      continue
+    }
 
     const value = obj[key]
 
     // Skip based on cleanup options
-    if ((cleanUndefined && isUndefined(value)) || (cleanNull && isNull(value))) continue
+    if (
+      (cleanUndefined && isUndefined(value)) ||
+      (cleanNull && isNull(value))
+    ) {
+      continue
+    }
 
     // Handle special cases
     if (isDOMNode(value)) {
@@ -140,9 +153,9 @@ export const deepClone = (obj, options = {}) => {
       continue
     }
 
-    // Handle 'extend' array if enabled
-    if (handleExtend && key === 'extend' && isArray(value)) {
-      clone[key] = mergeArray(value, exclude)
+    // Handle 'extends' array if enabled
+    if (handleExtend && key === 'extends' && isArray(value)) {
+      clone[key] = unstackArrayOfObjects(value, exclude)
       continue
     }
 
@@ -171,7 +184,10 @@ export const deepClone = (obj, options = {}) => {
  */
 export const deepStringify = (obj, stringified = {}) => {
   if (obj.node || obj.__ref || obj.parent || obj.__element || obj.parse) {
-    (obj.__element || obj.parent?.__element).warn('Trying to clone element or state at', obj)
+    ;(obj.__element || obj.parent?.__element).warn(
+      'Trying to clone element or state at',
+      obj
+    )
     obj = obj.parse?.()
   }
 
@@ -201,42 +217,6 @@ export const deepStringify = (obj, stringified = {}) => {
   return stringified
 }
 
-const MAX_DEPTH = 100 // Adjust this value as needed
-export const deepStringifyWithMaxDepth = (obj, stringified = {}, depth = 0, path = '') => {
-  if (depth > MAX_DEPTH) {
-    console.warn(`Maximum depth exceeded at path: ${path}. Possible circular reference.`)
-    return '[MAX_DEPTH_EXCEEDED]'
-  }
-
-  for (const prop in obj) {
-    const currentPath = path ? `${path}.${prop}` : prop
-    const objProp = obj[prop]
-
-    if (isFunction(objProp)) {
-      stringified[prop] = objProp.toString()
-    } else if (isObject(objProp)) {
-      stringified[prop] = {}
-      deepStringifyWithMaxDepth(objProp, stringified[prop], depth + 1, currentPath)
-    } else if (isArray(objProp)) {
-      stringified[prop] = []
-      objProp.forEach((v, i) => {
-        const itemPath = `${currentPath}[${i}]`
-        if (isObject(v)) {
-          stringified[prop][i] = {}
-          deepStringifyWithMaxDepth(v, stringified[prop][i], depth + 1, itemPath)
-        } else if (isFunction(v)) {
-          stringified[prop][i] = v.toString()
-        } else {
-          stringified[prop][i] = v
-        }
-      })
-    } else {
-      stringified[prop] = objProp
-    }
-  }
-  return stringified
-}
-
 export const objectToString = (obj = {}, indent = 0) => {
   // Handle empty object case
   if (obj === null || typeof obj !== 'object') {
@@ -252,7 +232,22 @@ export const objectToString = (obj = {}, indent = 0) => {
   let str = '{\n'
 
   for (const [key, value] of Object.entries(obj)) {
-    const keyNotAllowdChars = stringIncludesAny(key, ['&', '*', '-', ':', '%', '{', '}', '>', '<', '@', '.', '/', '!', ' '])
+    const keyNotAllowdChars = stringIncludesAny(key, [
+      '&',
+      '*',
+      '-',
+      ':',
+      '%',
+      '{',
+      '}',
+      '>',
+      '<',
+      '@',
+      '.',
+      '/',
+      '!',
+      ' '
+    ])
     const stringedKey = keyNotAllowdChars ? `'${key}'` : key
     str += `${spaces}  ${stringedKey}: `
 
@@ -271,7 +266,9 @@ export const objectToString = (obj = {}, indent = 0) => {
     } else if (isObjectLike(value)) {
       str += objectToString(value, indent + 1)
     } else if (isString(value)) {
-      str += stringIncludesAny(value, ['\n', '\'']) ? `\`${value}\`` : `'${value}'`
+      str += stringIncludesAny(value, ['\n', "'"])
+        ? `\`${value}\``
+        : `'${value}'`
     } else {
       str += value
     }
@@ -283,35 +280,7 @@ export const objectToString = (obj = {}, indent = 0) => {
   return str
 }
 
-/**
- * Stringify object
- */
-export const detachFunctionsFromObject = (obj, detached = {}) => {
-  for (const prop in obj) {
-    const objProp = obj[prop]
-    if (isFunction(objProp)) continue
-    else if (isObject(objProp)) {
-      detached[prop] = {}
-      deepStringify(objProp, detached[prop])
-    } else if (isArray(objProp)) {
-      detached[prop] = []
-      objProp.forEach((v, i) => {
-        if (isFunction(v)) return
-        if (isObject(v)) {
-          detached[prop][i] = {}
-          detachFunctionsFromObject(v, detached[prop][i])
-        } else {
-          detached[prop][i] = v
-        }
-      })
-    } else {
-      detached[prop] = objProp
-    }
-  }
-  return detached
-}
-
-export const hasFunction = (str) => {
+export const hasFunction = str => {
   if (!str) return false
 
   const trimmed = str.trim().replace(/\n\s*/g, ' ').trim()
@@ -357,7 +326,7 @@ export const deepDestringify = (obj, destringified = {}) => {
       }
     } else if (isArray(objProp)) {
       destringified[prop] = []
-      objProp.forEach((arrProp) => {
+      objProp.forEach(arrProp => {
         if (isString(arrProp)) {
           if (hasFunction(arrProp)) {
             try {
@@ -387,99 +356,19 @@ export const deepDestringify = (obj, destringified = {}) => {
 export const stringToObject = (str, opts = { verbose: true }) => {
   try {
     return str ? window.eval('(' + str + ')') : {} // eslint-disable-line
-  } catch (e) { if (opts.verbose) console.warn(e) }
-}
-
-export const diffObjects = (original, objToDiff, cache) => {
-  for (const e in objToDiff) {
-    if (e === 'ref') continue
-
-    const originalProp = original[e]
-    const objToDiffProp = objToDiff[e]
-
-    if (isObject(originalProp) && isObject(objToDiffProp)) {
-      cache[e] = {}
-      diff(originalProp, objToDiffProp, cache[e])
-    } else if (objToDiffProp !== undefined) {
-      cache[e] = objToDiffProp
-    }
+  } catch (e) {
+    if (opts.verbose) console.warn(e)
   }
-  return cache
 }
 
-export const diffArrays = (original, objToDiff, cache) => {
-  if (original.length !== objToDiff.length) {
-    cache = objToDiff
-  } else {
-    const diffArr = []
-    for (let i = 0; i < original.length; i++) {
-      const diffObj = diff(original[i], objToDiff[i])
-      if (Object.keys(diffObj).length > 0) {
-        diffArr.push(diffObj)
-      }
-    }
-    if (diffArr.length > 0) {
-      cache = diffArr
-    }
-  }
-  return cache
-}
-
-export const diff = (original, objToDiff, cache = {}) => {
-  if (isArray(original) && isArray(objToDiff)) {
-    cache = []
-    diffArrays(original, objToDiff, cache)
-  } else {
-    diffObjects(original, objToDiff, cache)
-  }
-
-  return cache
-}
-
-export const hasOwnProperty = (o, ...args) => Object.prototype.hasOwnProperty.call(o, ...args)
+export const hasOwnProperty = (o, ...args) =>
+  Object.prototype.hasOwnProperty.call(o, ...args)
 
 export const isEmpty = o => Object.keys(o).length === 0
 
-export const isEmptyObject = (o) => isObject(o) && isEmpty(o)
+export const isEmptyObject = o => isObject(o) && isEmpty(o)
 
 export const makeObjectWithoutPrototype = () => Object.create(null)
-
-// by mattphillips
-// https://github.com/mattphillips/deep-object-diff/blob/main/src/diff.js
-export const deepDiff = (lhs, rhs) => {
-  if (lhs === rhs) return {}
-
-  if (!isObjectLike(lhs) || !isObjectLike(rhs)) return rhs
-
-  const deletedValues = Object.keys(lhs).reduce((acc, key) => {
-    if (!hasOwnProperty(rhs, key)) {
-      acc[key] = undefined
-    }
-
-    return acc
-  }, makeObjectWithoutPrototype())
-
-  if (isDate(lhs) || isDate(rhs)) {
-    if (lhs.valueOf() === rhs.valueOf()) return {}
-    return rhs
-  }
-
-  return Object.keys(rhs).reduce((acc, key) => {
-    if (!hasOwnProperty(lhs, key)) {
-      acc[key] = rhs[key]
-      return acc
-    }
-
-    const difference = diff(lhs[key], rhs[key])
-
-    if (isEmptyObject(difference) && !isDate(difference) && (isEmptyObject(lhs[key]) || !isEmptyObject(rhs[key]))) {
-      return acc
-    }
-
-    acc[key] = difference
-    return acc
-  }, deletedValues)
-}
 
 /**
  * Overwrites object properties with another
@@ -501,9 +390,6 @@ export const overwrite = (element, params, opts = {}) => {
       if (ref && !preventCaching) {
         ref.__cache[e] = elementProp
       }
-      if (isObject(opts.diff)) {
-        diff[e] = elementProp
-      }
     }
   }
 
@@ -521,11 +407,21 @@ export const overwriteShallow = (obj, params, excludeFrom = []) => {
 /**
  * Overwrites DEEPLY object properties with another
  */
-export const overwriteDeep = (obj, params, opts = {}, visited = new WeakMap()) => {
+export const overwriteDeep = (
+  obj,
+  params,
+  opts = {},
+  visited = new WeakMap()
+) => {
   const excl = opts.exclude || []
   const forcedExclude = opts.preventForce ? [] : ['node', 'window']
 
-  if (!isObjectLike(obj) || !isObjectLike(params) || isDOMNode(obj) || isDOMNode(params)) {
+  if (
+    !isObjectLike(obj) ||
+    !isObjectLike(params) ||
+    isDOMNode(obj) ||
+    isDOMNode(params)
+  ) {
     return params
   }
 
@@ -549,29 +445,6 @@ export const overwriteDeep = (obj, params, opts = {}, visited = new WeakMap()) =
   }
 
   return obj
-}
-
-/**
- * Overwrites object properties with another
- */
-export const mergeIfExisted = (a, b) => {
-  if (isObjectLike(a) && isObjectLike(b)) return deepMerge(a, b)
-  return a || b
-}
-
-/**
- * Overwrites object properties with another
- */
-export const flattenRecursive = (param, prop, stack = []) => {
-  const objectized = mergeAndCloneIfArray(param)
-  stack.push(objectized)
-
-  const extendOfExtend = objectized[prop]
-  if (extendOfExtend) flattenRecursive(extendOfExtend, prop, stack)
-
-  delete objectized[prop]
-
-  return stack
 }
 
 /**
@@ -610,7 +483,12 @@ export const flattenRecursive = (param, prop, stack = []) => {
  */
 export const isEqualDeep = (param, element, visited = new Set()) => {
   // Check if both values are non-null objects
-  if (typeof param !== 'object' || typeof element !== 'object' || param === null || element === null) {
+  if (
+    typeof param !== 'object' ||
+    typeof element !== 'object' ||
+    param === null ||
+    element === null
+  ) {
     return param === element // Compare non-object values directly
   }
 
@@ -650,42 +528,39 @@ export const isEqualDeep = (param, element, visited = new Set()) => {
 
 export const deepContains = (obj1, obj2, ignoredKeys = ['node', '__ref']) => {
   if (obj1 === obj2) return true
-  if (!isObjectLike(obj1) || !isObjectLike(obj2)) return false
+  if (!isObjectLike(obj1) || !isObjectLike(obj2)) return obj1 === obj2
   if (isDOMNode(obj1) || isDOMNode(obj2)) return obj1 === obj2
 
-  const stack = [[obj1, obj2]]
   const visited = new WeakSet()
 
-  while (stack.length > 0) {
-    const [current1, current2] = stack.pop()
+  function checkContains (target, source) {
+    if (visited.has(source)) return true
+    visited.add(source)
 
-    if (visited.has(current1)) continue
-    visited.add(current1)
+    // Check each property in source
+    for (const key in source) {
+      if (!Object.prototype.hasOwnProperty.call(source, key)) continue
+      if (ignoredKeys.includes(key)) continue
 
-    const keys1 = Object.keys(current1).filter(key => !ignoredKeys.includes(key))
-    const keys2 = Object.keys(current2).filter(key => !ignoredKeys.includes(key))
+      // If key doesn't exist in target, return false
+      if (!Object.prototype.hasOwnProperty.call(target, key)) return false
 
-    if (keys1.length !== keys2.length) return false
+      const sourceValue = source[key]
+      const targetValue = target[key]
 
-    for (const key of keys1) {
-      if (!Object.prototype.hasOwnProperty.call(current2, key)) return false
-
-      const value1 = current1[key]
-      const value2 = current2[key]
-
-      if (isDOMNode(value1) || isDOMNode(value2)) {
-        if (value1 !== value2) return false
-      } else if (isObjectLike(value1) && isObjectLike(value2)) {
-        if (value1 !== value2) {
-          stack.push([value1, value2])
-        }
-      } else if (value1 !== value2) {
+      if (isDOMNode(sourceValue) || isDOMNode(targetValue)) {
+        if (sourceValue !== targetValue) return false
+      } else if (isObjectLike(sourceValue) && isObjectLike(targetValue)) {
+        if (!checkContains(targetValue, sourceValue)) return false
+      } else if (sourceValue !== targetValue) {
         return false
       }
     }
+
+    return true
   }
 
-  return true
+  return checkContains(obj1, obj2)
 }
 
 export const removeFromObject = (obj, props) => {
@@ -695,12 +570,14 @@ export const removeFromObject = (obj, props) => {
   } else if (isArray(props)) {
     props.forEach(prop => delete obj[prop])
   } else {
-    throw new Error('Invalid input: props must be a string or an array of strings')
+    throw new Error(
+      'Invalid input: props must be a string or an array of strings'
+    )
   }
   return obj
 }
 
-export const createObjectWithoutPrototype = (obj) => {
+export const createObjectWithoutPrototype = obj => {
   if (obj === null || typeof obj !== 'object') {
     return obj // Return the value if obj is not an object
   }
@@ -816,7 +693,10 @@ export const detectInfiniteLoop = arr => {
       // If the pattern repeats more than `maxRepeats`, throw a warning
       if (repeatCount >= maxRepeats * 2) {
         if (ENV === 'test' || ENV === 'development') {
-          console.warn('Warning: Potential infinite loop detected due to repeated sequence:', pattern)
+          console.warn(
+            'Warning: Potential infinite loop detected due to repeated sequence:',
+            pattern
+          )
         }
         return true
       }
@@ -824,7 +704,7 @@ export const detectInfiniteLoop = arr => {
   }
 }
 
-export const isCyclic = (obj) => {
+export const isCyclic = obj => {
   const seenObjects = []
 
   function detect (obj) {

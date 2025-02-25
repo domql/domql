@@ -14,6 +14,7 @@ You can start with [starter-kit](https://github.com/domql/starter-kit) as a
 boilerplate, or jump into the [playground](https://domql.com/playground/).
 
 [![npm version](https://badge.fury.io/js/domql.svg)](https://badge.fury.io/js/domql)
+[![Coverage Status](https://coveralls.io/repos/github/symbo-ls/domql/badge.svg?branch=feature/extends)](https://coveralls.io/github/symbo-ls/domql?branch=feature/extends)
 
 ## Symbols
 DOMQL is designed to work perfectly with Symbols design system and components. To use it with Symbols please refer relevant docs: [symbols.app/api](https://symbols.app/api)
@@ -60,7 +61,7 @@ const Link = {
 }
 
 const ListItem = {
-  extend: Link,
+  extends: Link,
   class: 'ui link',
   attr: {
     href: '#'
@@ -68,7 +69,7 @@ const ListItem = {
 }
 
 const menu = {
-  childExtend: ListItem,
+  childExtends: ListItem,
   home: 'Home',
   text: 'About'
 }
@@ -85,7 +86,7 @@ As flexible as Javascript.
 const navItems = ['Home', 'About', 'FAQ', 'Contact']
 
 const menu = {
-  extend: ListItem,
+  extends: ListItem,
   ...navItems
 }
 ```
@@ -115,8 +116,8 @@ const Increment = {
 | Property | Type | Description | Default |
 | --- | --- | --- | --- |
 | `key` | `Number` `String` | Defines the key of the Element | The key of the object, or randomly generated name |
-| `extend` | `Object` `Array` | Clones the other element | `undefined` |
-| `childExtend` | `Object` `Array` | Specifies the `extend` for all child elements | `undefined` |
+| `extends` | `Object` `Array` | Clones the other element | `undefined` |
+| `childExtends` | `Object` `Array` | Specifies the `extends` for all child elements | `undefined` |
 | `tag` | `String` | Specifis the HTML tag  | `div` or related HTML tag if the key matches |
 | `class` | `Any` | Specifies the HTML class | `undefined` |
 | `attr` | `Object` | Specifies the set of HTML attributes | `{}` |
@@ -134,7 +135,7 @@ const User = {
 }
 
 const Contact = {
-  extend: User,
+  extends: User,
   username: 'nikoloza'
 }
 ```
@@ -155,7 +156,7 @@ All native DOM events are supported and can be specified inside `on` parameter. 
 key
 tag
 node
-extend
+extends
 on
 class
 text
@@ -174,7 +175,7 @@ const layout = { // this will be <div>
   header: {}, // will create <header>
   aside: {}, // will create <aside>
   main: { // will create <main>
-    childExtend: {
+    childExtends: {
       article: { // will create <article>
         title: {}, // will create <div>
         description: {}, // will create <div>

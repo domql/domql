@@ -1,8 +1,7 @@
 'use strict'
 
-import { exec, isNot, isNull, isUndefined } from '@domql/utils'
+import { deepMerge, exec, isNot, isNull, isUndefined } from '@domql/utils'
 import { report } from '@domql/report'
-import { deepMerge } from '../utils/index.js'
 
 /**
  * Recursively add attributes to a DOM node
@@ -12,12 +11,19 @@ export function attr (params, element, node) {
   const { __attr } = ref
   if (isNot('object')) report('HTMLInvalidAttr', params)
   if (params) {
-    if (props.attr) deepMerge(params, props.attr)
-    for (const attr in params) {
-      const val = exec(params[attr], element)
+    const attrs = exec(params, element)
+    if (props.attr) deepMerge(attrs, props.attr)
+    for (const attr in attrs) {
+      const val = exec(attrs[attr], element)
       // if (__attr[attr] === val) return
-      if (val !== false && !isUndefined(val) && !isNull(val) && node.setAttribute) node.setAttribute(attr, val)
-      else if (node.removeAttribute) node.removeAttribute(attr)
+      if (
+        val !== false &&
+        !isUndefined(val) &&
+        !isNull(val) &&
+        node.setAttribute
+      ) {
+        node.setAttribute(attr, val)
+      } else if (node.removeAttribute) node.removeAttribute(attr)
       __attr[attr] = val
     }
   }

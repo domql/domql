@@ -20,8 +20,6 @@ export const removeFromArray = (arr, index) => {
       throw new Error('Invalid index')
     }
     arr.splice(index, 1)
-  } else if (isArray(index)) {
-    index.forEach(idx => removeFromArray(arr, idx))
   } else {
     throw new Error('Invalid index')
   }
@@ -29,7 +27,7 @@ export const removeFromArray = (arr, index) => {
 }
 
 export const swapItemsInArray = (arr, i, j) => {
-  [arr[i], arr[j]] = [arr[j], arr[i]]
+  ;[arr[i], arr[j]] = [arr[j], arr[i]]
 }
 
 export const joinArrays = (...arrays) => {
@@ -39,15 +37,11 @@ export const joinArrays = (...arrays) => {
 /**
  * Merges array extendtypes
  */
-export const mergeArray = (arr, exclude = []) => {
-  return arr.reduce((a, c) => deepMerge(a, deepClone(c, { exclude }), exclude), {})
-}
-
-/**
- * Merges array extends
- */
-export const mergeAndCloneIfArray = obj => {
-  return isArray(obj) ? mergeArray(obj) : deepClone(obj)
+export const unstackArrayOfObjects = (arr, exclude = []) => {
+  return arr.reduce(
+    (a, c) => deepMerge(a, deepClone(c, { exclude }), exclude),
+    {}
+  )
 }
 
 export const cutArrayBeforeValue = (arr, value) => {
@@ -105,7 +99,10 @@ export const reorderArrayByValues = (array, valueToMove, insertBeforeValue) => {
   const indexToInsertBefore = newArray.indexOf(insertBeforeValue) // Find the index to insert before
   if (indexToMove !== -1 && indexToInsertBefore !== -1) {
     const removedItem = newArray.splice(indexToMove, 1)[0] // Remove the item to move
-    const insertIndex = indexToInsertBefore < indexToMove ? indexToInsertBefore : indexToInsertBefore + 1 // Adjust insert index
+    const insertIndex =
+      indexToInsertBefore < indexToMove
+        ? indexToInsertBefore
+        : indexToInsertBefore + 1 // Adjust insert index
     newArray.splice(insertIndex, 0, removedItem) // Insert the removed item before the specified value
   }
   return newArray
@@ -139,4 +136,20 @@ export const filterArraysFast = (sourceArr, excludeArr) => {
 export const checkIfStringIsInArray = (string, arr) => {
   if (!string) return
   return arr.filter(v => string.includes(v)).length
+}
+
+export const removeDuplicatesInArray = arr => {
+  if (!isArray(arr)) return arr
+  return [...new Set(arr)]
+}
+
+export const addProtoToArray = (state, proto) => {
+  for (const key in proto) {
+    Object.defineProperty(state, key, {
+      value: proto[key],
+      enumerable: false, // Set this to true if you want the method to appear in for...in loops
+      configurable: true, // Set this to true if you want to allow redefining/removing the property later
+      writable: true // Set this to true if you want to allow changing the function later
+    })
+  }
 }

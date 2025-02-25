@@ -77,7 +77,7 @@ export const router = (
 
     element.set({
       tag: opts.useFragment && 'fragment',
-      extend: content
+      extends: content
     }, { contentElementKey })
   }
 

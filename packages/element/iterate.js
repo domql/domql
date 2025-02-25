@@ -6,28 +6,25 @@ import {
   isFunction,
   isNumber,
   isString,
-  checkIfKeyIsComponent,
-  extendizeByKey,
-  isVariant
+  matchesComponentNaming,
+  isContextComponent,
+  isMethod,
+  overwrite
 } from '@domql/utils'
-
-import { METHODS_EXL, overwrite } from './utils/index.js'
-import { isMethod } from './methods/index.js'
 
 export const throughInitialExec = (element, exclude = {}) => {
   const { __ref: ref } = element
   for (const param in element) {
     if (exclude[param]) continue
     const prop = element[param]
-    if (isFunction(prop) && !isMethod(param, element) && !isVariant(param)) {
+    if (isFunction(prop) && !isMethod(param, element)) {
       ref.__exec[param] = prop
       element[param] = prop(element, element.state, element.context)
-      // if (isComponent)
     }
   }
 }
 
-export const throughUpdatedExec = (element, options = { excludes: METHODS_EXL }) => {
+export const throughUpdatedExec = (element, options = {}) => {
   const { __ref: ref } = element
   const changes = {}
 
@@ -41,13 +38,15 @@ export const throughUpdatedExec = (element, options = { excludes: METHODS_EXL })
     const execReturnsString = isString(newExec) || isNumber(newExec)
     // if (prop && prop.node && execReturnsString) {
     if (prop && prop.node && execReturnsString) {
-      overwrite(prop, { text: newExec }, options)
+      overwrite(prop, { text: newExec })
     } else if (newExec !== prop) {
-      if (checkIfKeyIsComponent(param)) {
-        const { extend, ...newElem } = extendizeByKey(newExec, element, param)
-        overwrite(prop, newElem, options)
-        // } else {
-        //   overwrite(prop, newExec, options)
+      if (matchesComponentNaming(param)) {
+        const { extends: extend, ...newElem } = isContextComponent(
+          newExec,
+          element,
+          param
+        )
+        overwrite(prop, newElem)
       } else {
         ref.__cached[param] = changes[param] = prop
         element[param] = newExec
@@ -58,11 +57,12 @@ export const throughUpdatedExec = (element, options = { excludes: METHODS_EXL })
   return changes
 }
 
-export const throughExecProps = (element) => {
+export const throughExecProps = element => {
   const { __ref: ref } = element
   const { props } = element
   for (const k in props) {
-    const isDefine = k.startsWith('is') || k.startsWith('has') || k.startsWith('use')
+    const isDefine =
+      k.startsWith('is') || k.startsWith('has') || k.startsWith('use')
     const cachedExecProp = ref.__execProps[k]
     if (isFunction(cachedExecProp)) {
       props[k] = exec(cachedExecProp, element)
@@ -73,7 +73,9 @@ export const throughExecProps = (element) => {
   }
 }
 
-export const throughInitialDefine = (element) => {
+export const isPropertyInDefines = (key, element) => {}
+
+export const throughInitialDefine = element => {
   const { define, context, __ref: ref } = element
 
   let defineObj = {}
@@ -84,23 +86,30 @@ export const throughInitialDefine = (element) => {
   for (const param in defineObj) {
     let elementProp = element[param]
 
-    if (isFunction(elementProp) && !isMethod(param, element) && !isVariant(param)) {
+    if (isFunction(elementProp) && !isMethod(param, element)) {
       ref.__exec[param] = elementProp
-      const execParam = elementProp = exec(elementProp, element)
+      const execParam = (elementProp = exec(elementProp, element))
 
       if (execParam) {
-        elementProp = element[param] = execParam.parse ? execParam.parse() : execParam
+        elementProp = element[param] = execParam.parse
+          ? execParam.parse()
+          : execParam
         ref.__defineCache[param] = elementProp
       }
     }
 
-    const execParam = defineObj[param](elementProp, element, element.state, element.context)
+    const execParam = defineObj[param](
+      elementProp,
+      element,
+      element.state,
+      element.context
+    )
     if (execParam) element[param] = execParam
   }
   return element
 }
 
-export const throughUpdatedDefine = (element) => {
+export const throughUpdatedDefine = element => {
   const { context, define, __ref: ref } = element
   const changes = {}
 
@@ -110,9 +119,20 @@ export const throughUpdatedDefine = (element) => {
 
   for (const param in obj) {
     const execParam = ref.__exec[param]
-    if (execParam) ref.__defineCache[param] = execParam(element, element.state, element.context)
+    if (execParam) {
+      ref.__defineCache[param] = execParam(
+        element,
+        element.state,
+        element.context
+      )
+    }
     const cached = exec(ref.__defineCache[param], element)
-    const newExecParam = obj[param](cached, element, element.state, element.context)
+    const newExecParam = obj[param](
+      cached,
+      element,
+      element.state,
+      element.context
+    )
     if (newExecParam) element[param] = newExecParam
   }
   return changes

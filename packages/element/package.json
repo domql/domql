@@ -29,6 +29,7 @@
   "dependencies": {
     "@domql/event": "^2.5.190",
     "@domql/render": "^2.5.190",
+    "@domql/report": "^2.5.186",
     "@domql/state": "^2.5.198",
     "@domql/utils": "^2.5.187"
   },

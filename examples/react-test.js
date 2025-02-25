@@ -82,7 +82,7 @@ const renderReact = (element, key) => {
 
 export const DOMQLReact = (component, props, state) => {
   const element = create({
-    extend: component,
+    extends: component,
     props,
     state
   }, null, null, { transform: { react: transformReact } })

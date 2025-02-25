@@ -9,13 +9,11 @@ import { style } from './style.js'
 import { text } from './text.js'
 import { state } from './state.js'
 import { scope } from './scope.js'
-import { REGISTRY } from './registry.js'
-
-export { REGISTRY as registry }
-export { applyClasslist as classList }
-export { setContent as content }
+// import { children } from './children.js'
 
 export {
+  applyClasslist as classList,
+  setContent as content,
   attr,
   data,
   style,
